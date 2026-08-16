@@ -178,6 +178,26 @@
     text-align:center; font-size:11px; color:var(--muted); margin-top:18px; padding-bottom:6px;
   }
 
+  .hour-bars{ height:110px; }
+  .hour-bars .bar-col{ width:3.6%; gap:3px; }
+  .hour-bars .bar-track{ height:80px; }
+  .hour-bars .bar{ width:100%; border-radius:3px 3px 2px 2px; cursor:pointer; }
+  .hour-bars .bar-day{ font-size:7.5px; }
+  .hour-bars .bar-col.empty-hour .bar{ background:var(--line) !important; }
+
+  .hour-entry{
+    display:flex; align-items:center; gap:12px;
+    background:var(--panel); border-radius:12px; padding:10px 12px;
+    margin-top:8px; border:1px solid var(--line);
+  }
+  .hour-entry .num{
+    width:26px; height:26px; border-radius:50%; flex:none;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Fraunces'; font-weight:700; font-size:12px; color:#fff;
+  }
+  .hour-entry .time{ font-size:11px; color:var(--muted); font-weight:600; }
+  .hour-entry .note{ font-size:13px; margin-top:1px; color:var(--ink); }
+
   .export-row{ display:flex; gap:8px; margin-top:14px; }
   .export-row button{
     flex:1; border:1px solid var(--line); background:var(--panel); color:var(--ink);
@@ -194,6 +214,7 @@
 
   <nav>
     <button class="active" data-view="log">Registrar</button>
+    <button data-view="day">Dia</button>
     <button data-view="dash">Semana</button>
   </nav>
 
@@ -218,6 +239,29 @@
         <h3>Hoje</h3>
         <div id="todayEntries"></div>
       </div>
+    </section>
+
+    <section class="view" id="view-day">
+      <div class="week-nav">
+        <button id="prevDay">‹</button>
+        <div class="label" id="dayLabel">Hoje</div>
+        <button id="nextDay">›</button>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat"><div class="val" id="dayStatCount">0</div><div class="lbl">Crises</div></div>
+        <div class="stat"><div class="val" id="dayStatAvg">–</div><div class="lbl">Média</div></div>
+        <div class="stat"><div class="val" id="dayStatMax">–</div><div class="lbl">Pico</div></div>
+      </div>
+
+      <div class="chart">
+        <h3>Intensidade por hora</h3>
+        <div class="bars hour-bars" id="hourBars"></div>
+      </div>
+
+      <div class="trend" id="dayTrendBox"></div>
+      <div class="footnote">Toque numa barra pra ver os registros daquela hora.</div>
+      <div id="hourDetail"></div>
     </section>
 
     <section class="view" id="view-dash">
@@ -255,6 +299,8 @@ const STORAGE_KEY = 'ansiedade_entries_v1';
 let entries = [];
 let selectedIntensity = null;
 let weekOffset = 0;
+let dayOffset = 0;
+let selectedHour = null;
 
 function loadEntries(){
   try{
@@ -387,6 +433,86 @@ function renderDashboard(){
   }
 }
 
+function renderHourDetail(dayEntries){
+  const box = document.getElementById('hourDetail');
+  if(selectedHour === null){ box.innerHTML = ''; return; }
+  const list = dayEntries
+    .filter(e => new Date(e.ts).getHours() === selectedHour)
+    .sort((a,b)=> a.ts - b.ts);
+  if(list.length === 0){ box.innerHTML = ''; return; }
+  const hh = String(selectedHour).padStart(2,'0');
+  box.innerHTML = `<div class="footnote" style="margin-top:14px; text-align:left; font-weight:700; color:var(--ink);">${hh}h–${String((selectedHour+1)%24).padStart(2,'0')}h</div>` +
+    list.map(e=>{
+      const time = new Date(e.ts).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+      return `<div class="hour-entry">
+        <div class="num" style="background:${COLORS[e.intensity]}">${e.intensity}</div>
+        <div>
+          <div class="time">${time}</div>
+          ${e.note ? `<div class="note">${escapeHtml(e.note)}</div>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+}
+
+function renderDayDashboard(){
+  const day = new Date();
+  day.setDate(day.getDate() + dayOffset);
+  const dayStart = new Date(day); dayStart.setHours(0,0,0,0);
+  const dayEnd = new Date(day); dayEnd.setHours(23,59,59,999);
+
+  document.getElementById('dayLabel').textContent =
+    dayOffset === 0 ? `Hoje · ${day.toLocaleDateString('pt-BR',{day:'2-digit',month:'short'})}` : day.toLocaleDateString('pt-BR',{weekday:'short', day:'2-digit', month:'short'});
+  document.getElementById('nextDay').disabled = dayOffset >= 0;
+
+  const dayEntries = entries.filter(e => e.ts >= dayStart.getTime() && e.ts <= dayEnd.getTime());
+  const count = dayEntries.length;
+  const avg = count ? (dayEntries.reduce((s,e)=>s+e.intensity,0)/count) : null;
+  const max = count ? Math.max(...dayEntries.map(e=>e.intensity)) : null;
+
+  document.getElementById('dayStatCount').textContent = count;
+  document.getElementById('dayStatAvg').textContent = avg ? avg.toFixed(1) : '–';
+  document.getElementById('dayStatMax').textContent = max ?? '–';
+
+  const perHour = Array.from({length:24}, (_,h)=>{
+    const hEntries = dayEntries.filter(e => new Date(e.ts).getHours() === h);
+    const hAvg = hEntries.length ? hEntries.reduce((s,e)=>s+e.intensity,0)/hEntries.length : 0;
+    return {hour:h, avg:hAvg, count:hEntries.length};
+  });
+
+  const barsEl = document.getElementById('hourBars');
+  barsEl.innerHTML = perHour.map(h=>{
+    const hh = String(h.hour).padStart(2,'0');
+    const showLabel = h.hour % 3 === 0;
+    const barH = h.avg ? Math.max(6, (h.avg/5)*80) : 2;
+    const color = h.avg ? COLORS[Math.round(h.avg)] : '';
+    return `<div class="bar-col ${h.count?'':'empty-hour'} ${selectedHour===h.hour?'selected-hour':''}" data-hour="${h.hour}">
+      <div class="bar-track"><div class="bar" style="height:${barH}px; ${color?`background:${color}`:''}"></div></div>
+      <div class="bar-day">${showLabel ? hh : ''}</div>
+    </div>`;
+  }).join('');
+
+  const trendBox = document.getElementById('dayTrendBox');
+  if(!count){
+    trendBox.innerHTML = 'Sem registros neste dia.';
+  } else {
+    const peakHour = perHour.reduce((a,b)=> b.avg > a.avg ? b : a, perHour[0]);
+    trendBox.innerHTML = `Média de <b>${avg.toFixed(1)}</b> em ${count} registro${count>1?'s':''}. Pico por volta das <b>${String(peakHour.hour).padStart(2,'0')}h</b>.`;
+  }
+
+  renderHourDetail(dayEntries);
+}
+
+document.getElementById('hourBars').addEventListener('click', (e)=>{
+  const col = e.target.closest('.bar-col');
+  if(!col) return;
+  const h = Number(col.dataset.hour);
+  selectedHour = selectedHour === h ? null : h;
+  renderDayDashboard();
+});
+
+document.getElementById('prevDay').addEventListener('click', ()=>{ dayOffset -= 1; selectedHour = null; renderDayDashboard(); });
+document.getElementById('nextDay').addEventListener('click', ()=>{ dayOffset = Math.min(0, dayOffset+1); selectedHour = null; renderDayDashboard(); });
+
 document.querySelectorAll('nav button').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
@@ -394,6 +520,7 @@ document.querySelectorAll('nav button').forEach(btn=>{
     btn.classList.add('active');
     document.getElementById('view-'+btn.dataset.view).classList.add('active');
     if(btn.dataset.view === 'dash') renderDashboard();
+    if(btn.dataset.view === 'day') renderDayDashboard();
   });
 });
 
