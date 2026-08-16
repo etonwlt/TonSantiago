@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Mapa de Ansiedade</title>
+
+<!-- iOS: faz o site abrir como app em tela cheia quando adicionado à Tela de Início -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Ansiedade">
+<meta name="theme-color" content="#222A28">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='36' fill='%23222A28'/%3E%3Ccircle cx='90' cy='95' r='16' fill='%238FA89B'/%3E%3Ccircle cx='130' cy='90' r='22' fill='%23D8B266'/%3E%3Ccircle cx='55' cy='115' r='12' fill='%23A9AD7A'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='36' fill='%23222A28'/%3E%3Ccircle cx='90' cy='95' r='16' fill='%238FA89B'/%3E%3Ccircle cx='130' cy='90' r='22' fill='%23D8B266'/%3E%3Ccircle cx='55' cy='115' r='12' fill='%23A9AD7A'/%3E%3C/svg%3E">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#222A28;
+    --paper:#F4F1EC;
+    --panel:#FFFFFF;
+    --line: rgba(34,42,40,0.10);
+    --muted:#6B7370;
+
+    --c1:#8FA89B;
+    --c2:#A9AD7A;
+    --c3:#D8B266;
+    --c4:#DB8A56;
+    --c5:#C45A45;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
+  html,body{margin:0; padding:0; background:var(--ink); color:var(--ink); font-family:'Manrope',system-ui,sans-serif;}
+  body{
+    display:flex; justify-content:center;
+    min-height:100vh; min-height:100dvh;
+  }
+  #app{
+    width:100%; max-width:480px; min-height:100vh; min-height:100dvh;
+    background:var(--paper);
+    display:flex; flex-direction:column;
+    position:relative;
+  }
+
+  header{
+    padding: max(22px, env(safe-area-inset-top)) 22px 16px;
+    display:flex; flex-direction:column; gap:2px;
+  }
+  header .eyebrow{
+    font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--muted); font-weight:700;
+  }
+  header h1{
+    font-family:'Fraunces', serif; font-weight:600; font-size:26px;
+    margin:0; letter-spacing:-0.01em;
+  }
+
+  nav{
+    display:flex; gap:6px; padding:0 22px 14px;
+  }
+  nav button{
+    flex:1; border:none; background:transparent; padding:10px 0;
+    font-family:'Manrope'; font-weight:700; font-size:13.5px;
+    color:var(--muted); border-bottom:2px solid var(--line);
+    cursor:pointer;
+  }
+  nav button.active{ color:var(--ink); border-bottom:2px solid var(--ink); }
+
+  main{ flex:1; padding:4px 22px max(40px, env(safe-area-inset-bottom)); overflow-y:auto; -webkit-overflow-scrolling:touch; }
+  .view{ display:none; }
+  .view.active{ display:block; }
+
+  /* ---- LOG VIEW ---- */
+  .arc{
+    position:relative;
+    display:flex; align-items:flex-end; justify-content:space-between;
+    height:150px; padding:10px 6px 0;
+    margin-top:6px;
+  }
+  .arc-dot{
+    border:none; border-radius:50%; cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Fraunces'; font-weight:700; color:#fff;
+    transition: transform .15s ease;
+  }
+  .arc-dot:active{ transform: scale(0.92); }
+  .arc-dot[data-i="1"]{ width:38px; height:38px; font-size:14px; background:var(--c1); margin-bottom:56px;}
+  .arc-dot[data-i="2"]{ width:46px; height:46px; font-size:16px; background:var(--c2); margin-bottom:32px;}
+  .arc-dot[data-i="3"]{ width:56px; height:56px; font-size:19px; background:var(--c3); margin-bottom:14px;}
+  .arc-dot[data-i="4"]{ width:66px; height:66px; font-size:22px; background:var(--c4); margin-bottom:2px;}
+  .arc-dot[data-i="5"]{ width:78px; height:78px; font-size:26px; background:var(--c5); margin-bottom:-6px;}
+  .arc-dot.selected{ box-shadow: 0 0 0 4px rgba(34,42,40,0.16); transform: scale(1.05); }
+
+  .arc-labels{ display:flex; justify-content:space-between; padding:0 6px; margin-top:6px; }
+  .arc-labels span{ font-size:10.5px; color:var(--muted); font-weight:600; width:20%; text-align:center; }
+
+  .selected-tag{
+    text-align:center; margin-top:18px; min-height:20px;
+    font-size:14px; font-weight:700; color:var(--muted);
+  }
+
+  textarea{
+    width:100%; margin-top:16px; border:1px solid var(--line); border-radius:14px;
+    padding:12px 14px; font-family:'Manrope'; font-size:14px; resize:none;
+    background:var(--panel); color:var(--ink); min-height:64px;
+  }
+  textarea::placeholder{ color:var(--muted); }
+
+  .save-btn{
+    width:100%; margin-top:14px; border:none; border-radius:14px;
+    padding:15px; font-family:'Manrope'; font-weight:800; font-size:15px;
+    background:var(--ink); color:var(--paper); cursor:pointer;
+  }
+  .save-btn:disabled{ background:var(--line); color:var(--muted); }
+
+  .today-list{ margin-top:26px; }
+  .today-list h3{
+    font-family:'Fraunces'; font-size:15px; font-weight:600; margin:0 0 10px;
+    color:var(--ink);
+  }
+  .entry{
+    display:flex; align-items:center; gap:12px;
+    background:var(--panel); border-radius:12px; padding:10px 12px;
+    margin-bottom:8px; border:1px solid var(--line);
+  }
+  .entry .num{
+    width:28px; height:28px; border-radius:50%; flex:none;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Fraunces'; font-weight:700; font-size:13px; color:#fff;
+  }
+  .entry .info{ flex:1; min-width:0; }
+  .entry .time{ font-size:11px; color:var(--muted); font-weight:600; }
+  .entry .note{ font-size:13px; margin-top:1px; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .entry .del{
+    border:none; background:transparent; color:var(--muted); font-size:16px;
+    cursor:pointer; padding:4px;
+  }
+  .empty{ text-align:center; color:var(--muted); font-size:13.5px; padding:24px 10px; }
+
+  /* ---- DASHBOARD VIEW ---- */
+  .week-nav{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-top:10px; margin-bottom:18px;
+  }
+  .week-nav button{
+    border:none; background:var(--panel); border:1px solid var(--line);
+    width:34px; height:34px; border-radius:50%; font-size:15px; cursor:pointer; color:var(--ink);
+  }
+  .week-nav .label{ font-size:13px; font-weight:700; color:var(--muted); }
+
+  .stats-row{ display:flex; gap:10px; margin-bottom:20px; }
+  .stat{
+    flex:1; background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    padding:14px 12px; text-align:center;
+  }
+  .stat .val{ font-family:'Fraunces'; font-weight:700; font-size:24px; }
+  .stat .lbl{ font-size:10.5px; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.05em; margin-top:2px; }
+
+  .chart{
+    background:var(--panel); border:1px solid var(--line); border-radius:16px;
+    padding:18px 14px 12px; margin-bottom:18px;
+  }
+  .chart h3{ font-family:'Fraunces'; font-size:14px; font-weight:600; margin:0 0 14px; }
+  .bars{ display:flex; align-items:flex-end; justify-content:space-between; height:130px; }
+  .bar-col{ display:flex; flex-direction:column; align-items:center; gap:6px; width:12%; }
+  .bar-track{ height:100px; width:100%; display:flex; align-items:flex-end; justify-content:center; }
+  .bar{ width:60%; border-radius:6px 6px 3px 3px; min-height:4px; transition:height .3s ease; }
+  .bar-day{ font-size:10.5px; color:var(--muted); font-weight:700; }
+  .bar-count{ font-size:10px; color:var(--ink); font-weight:700; min-height:12px; }
+
+  .trend{
+    background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    padding:14px 16px; font-size:13.5px; color:var(--ink); line-height:1.5;
+  }
+  .trend b{ font-family:'Fraunces'; }
+
+  .footnote{
+    text-align:center; font-size:11px; color:var(--muted); margin-top:18px; padding-bottom:6px;
+  }
+
+  .export-row{ display:flex; gap:8px; margin-top:14px; }
+  .export-row button{
+    flex:1; border:1px solid var(--line); background:var(--panel); color:var(--ink);
+    border-radius:12px; padding:10px; font-family:'Manrope'; font-weight:700; font-size:12.5px; cursor:pointer;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="eyebrow">Registro pessoal</div>
+    <h1>Mapa de Ansiedade</h1>
+  </header>
+
+  <nav>
+    <button class="active" data-view="log">Registrar</button>
+    <button data-view="dash">Semana</button>
+  </nav>
+
+  <main>
+    <section class="view active" id="view-log">
+      <div class="arc" id="arc">
+        <button class="arc-dot" data-i="1">1</button>
+        <button class="arc-dot" data-i="2">2</button>
+        <button class="arc-dot" data-i="3">3</button>
+        <button class="arc-dot" data-i="4">4</button>
+        <button class="arc-dot" data-i="5">5</button>
+      </div>
+      <div class="arc-labels">
+        <span>Leve</span><span>Branda</span><span>Moderada</span><span>Forte</span><span>Intensa</span>
+      </div>
+      <div class="selected-tag" id="selectedTag">Toque na intensidade da crise</div>
+
+      <textarea id="noteInput" placeholder="O que estava acontecendo? (opcional)"></textarea>
+      <button class="save-btn" id="saveBtn" disabled>Salvar registro</button>
+
+      <div class="today-list">
+        <h3>Hoje</h3>
+        <div id="todayEntries"></div>
+      </div>
+    </section>
+
+    <section class="view" id="view-dash">
+      <div class="week-nav">
+        <button id="prevWeek">‹</button>
+        <div class="label" id="weekLabel">Esta semana</div>
+        <button id="nextWeek">›</button>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat"><div class="val" id="statCount">0</div><div class="lbl">Crises</div></div>
+        <div class="stat"><div class="val" id="statAvg">–</div><div class="lbl">Média</div></div>
+        <div class="stat"><div class="val" id="statMax">–</div><div class="lbl">Pico</div></div>
+      </div>
+
+      <div class="chart">
+        <h3>Intensidade média por dia</h3>
+        <div class="bars" id="bars"></div>
+      </div>
+
+      <div class="trend" id="trendBox"></div>
+
+      <div class="export-row">
+        <button id="exportBtn">Exportar dados (.json)</button>
+      </div>
+      <div class="footnote">Os dados ficam salvos só neste iPhone, neste navegador.</div>
+    </section>
+  </main>
+</div>
+
+<script>
+const DAY_NAMES = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+const COLORS = {1:'#8FA89B',2:'#A9AD7A',3:'#D8B266',4:'#DB8A56',5:'#C45A45'};
+const STORAGE_KEY = 'ansiedade_entries_v1';
+let entries = [];
+let selectedIntensity = null;
+let weekOffset = 0;
+
+function loadEntries(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    entries = raw ? JSON.parse(raw) : [];
+  }catch(e){
+    entries = [];
+  }
+}
+
+function persist(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+  }catch(e){
+    console.error('Falha ao salvar', e);
+  }
+}
+
+function startOfWeek(date){
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = (day === 0 ? -6 : 1 - day);
+  d.setDate(d.getDate() + diff);
+  d.setHours(0,0,0,0);
+  return d;
+}
+
+function fmtRange(start, end){
+  const opts = {day:'2-digit', month:'short'};
+  return `${start.toLocaleDateString('pt-BR', opts)} – ${end.toLocaleDateString('pt-BR', opts)}`;
+}
+
+function renderArc(){
+  document.querySelectorAll('.arc-dot').forEach(btn=>{
+    btn.classList.toggle('selected', Number(btn.dataset.i) === selectedIntensity);
+  });
+  const tag = document.getElementById('selectedTag');
+  const labels = {1:'Leve',2:'Branda',3:'Moderada',4:'Forte',5:'Intensa'};
+  tag.textContent = selectedIntensity ? `Intensidade ${selectedIntensity} · ${labels[selectedIntensity]}` : 'Toque na intensidade da crise';
+  document.getElementById('saveBtn').disabled = !selectedIntensity;
+}
+
+function renderToday(){
+  const todayKey = new Date().toDateString();
+  const list = entries
+    .filter(e => new Date(e.ts).toDateString() === todayKey)
+    .sort((a,b)=> b.ts - a.ts);
+  const container = document.getElementById('todayEntries');
+  if(list.length === 0){
+    container.innerHTML = '<div class="empty">Nenhum registro ainda hoje. Toque em um número para começar.</div>';
+    return;
+  }
+  container.innerHTML = list.map(e => {
+    const time = new Date(e.ts).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+    return `<div class="entry">
+      <div class="num" style="background:${COLORS[e.intensity]}">${e.intensity}</div>
+      <div class="info">
+        <div class="time">${time}</div>
+        ${e.note ? `<div class="note">${escapeHtml(e.note)}</div>` : ''}
+      </div>
+      <button class="del" data-id="${e.id}">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function renderDashboard(){
+  const base = new Date();
+  base.setDate(base.getDate() + weekOffset*7);
+  const start = startOfWeek(base);
+  const end = new Date(start);
+  end.setDate(end.getDate()+6);
+  end.setHours(23,59,59,999);
+
+  document.getElementById('weekLabel').textContent =
+    weekOffset === 0 ? `Esta semana · ${fmtRange(start,end)}` : fmtRange(start,end);
+
+  const weekEntries = entries.filter(e => e.ts >= start.getTime() && e.ts <= end.getTime());
+
+  const count = weekEntries.length;
+  const avg = count ? (weekEntries.reduce((s,e)=>s+e.intensity,0)/count) : null;
+  const max = count ? Math.max(...weekEntries.map(e=>e.intensity)) : null;
+
+  document.getElementById('statCount').textContent = count;
+  document.getElementById('statAvg').textContent = avg ? avg.toFixed(1) : '–';
+  document.getElementById('statMax').textContent = max ?? '–';
+
+  const perDay = [0,1,2,3,4,5,6].map(offset=>{
+    const d = new Date(start);
+    d.setDate(d.getDate()+offset);
+    const dayEntries = weekEntries.filter(e => new Date(e.ts).toDateString() === d.toDateString());
+    const dAvg = dayEntries.length ? dayEntries.reduce((s,e)=>s+e.intensity,0)/dayEntries.length : 0;
+    return {label: DAY_NAMES[d.getDay()], avg: dAvg, count: dayEntries.length};
+  });
+
+  const barsEl = document.getElementById('bars');
+  barsEl.innerHTML = perDay.map(d=>{
+    const h = d.avg ? Math.max(8, (d.avg/5)*100) : 3;
+    const color = d.avg ? COLORS[Math.round(d.avg)] : 'var(--line)';
+    return `<div class="bar-col">
+      <div class="bar-track"><div class="bar" style="height:${h}px; background:${color}"></div></div>
+      <div class="bar-count">${d.count ? d.count : ''}</div>
+      <div class="bar-day">${d.label}</div>
+    </div>`;
+  }).join('');
+
+  const prevBase = new Date(base);
+  prevBase.setDate(prevBase.getDate()-7);
+  const prevStart = startOfWeek(prevBase);
+  const prevEnd = new Date(prevStart);
+  prevEnd.setDate(prevEnd.getDate()+6);
+  prevEnd.setHours(23,59,59,999);
+  const prevWeekEntries = entries.filter(e => e.ts >= prevStart.getTime() && e.ts <= prevEnd.getTime());
+  const prevAvg = prevWeekEntries.length ? prevWeekEntries.reduce((s,e)=>s+e.intensity,0)/prevWeekEntries.length : null;
+
+  const trendBox = document.getElementById('trendBox');
+  if(!count){
+    trendBox.innerHTML = 'Sem registros nesta semana ainda.';
+  } else if(prevAvg === null){
+    trendBox.innerHTML = `Média de <b>${avg.toFixed(1)}</b> em ${count} registro${count>1?'s':''}. Ainda não há semana anterior para comparar.`;
+  } else {
+    const diff = avg - prevAvg;
+    const dir = diff < -0.15 ? 'caiu' : diff > 0.15 ? 'subiu' : 'ficou estável';
+    trendBox.innerHTML = `Média de <b>${avg.toFixed(1)}</b> em ${count} registro${count>1?'s':''} — ${dir} em relação à semana anterior (${prevAvg.toFixed(1)}).`;
+  }
+}
+
+document.querySelectorAll('nav button').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('view-'+btn.dataset.view).classList.add('active');
+    if(btn.dataset.view === 'dash') renderDashboard();
+  });
+});
+
+document.querySelectorAll('.arc-dot').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    selectedIntensity = Number(btn.dataset.i);
+    renderArc();
+  });
+});
+
+document.getElementById('saveBtn').addEventListener('click', ()=>{
+  if(!selectedIntensity) return;
+  const note = document.getElementById('noteInput').value.trim();
+  const entry = { id: Date.now()+'-'+Math.random().toString(36).slice(2,7), ts: Date.now(), intensity: selectedIntensity, note };
+  entries.push(entry);
+  persist();
+  selectedIntensity = null;
+  document.getElementById('noteInput').value = '';
+  renderArc();
+  renderToday();
+});
+
+document.getElementById('todayEntries').addEventListener('click', (e)=>{
+  const btn = e.target.closest('.del');
+  if(!btn) return;
+  entries = entries.filter(en => en.id !== btn.dataset.id);
+  persist();
+  renderToday();
+});
+
+document.getElementById('prevWeek').addEventListener('click', ()=>{ weekOffset -= 1; renderDashboard(); });
+document.getElementById('nextWeek').addEventListener('click', ()=>{ weekOffset = Math.min(0, weekOffset+1); renderDashboard(); });
+
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  const blob = new Blob([JSON.stringify(entries, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'ansiedade-dados-' + new Date().toISOString().slice(0,10) + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+loadEntries();
+renderArc();
+renderToday();
+renderDashboard();
+</script>
+</body>
+</html>
