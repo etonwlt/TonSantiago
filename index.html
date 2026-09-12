@@ -30,6 +30,14 @@
     --c4:#DB8A56;
     --c5:#C45A45;
   }
+  #app.dark{
+    --ink:#F2EFEA;
+    --paper:#1B211F;
+    --panel:#242B29;
+    --line: rgba(242,239,234,0.12);
+    --muted:#9AA39D;
+  }
+  #app.dark .arc-dot.selected{ box-shadow: 0 0 0 4px rgba(242,239,234,0.22); }
   *{box-sizing:border-box; -webkit-tap-highlight-color: transparent;}
   html,body{margin:0; padding:0; background:var(--ink); color:var(--ink); font-family:'Manrope',system-ui,sans-serif;}
   body{
@@ -41,6 +49,7 @@
     background:var(--paper);
     display:flex; flex-direction:column;
     position:relative;
+    transition: background-color .25s ease, color .25s ease;
   }
 
   header{
@@ -79,18 +88,19 @@
     margin-top:6px;
   }
   .arc-dot{
-    border:none; border-radius:50%; cursor:pointer;
-    display:flex; align-items:center; justify-content:center;
+    border:none; cursor:pointer;
+    display:flex; align-items:flex-start; justify-content:center; padding-top:6px;
     font-family:'Fraunces'; font-weight:700; color:#fff;
+    border-radius:12px 12px 6px 6px;
     transition: transform .15s ease;
   }
-  .arc-dot:active{ transform: scale(0.92); }
-  .arc-dot[data-i="0"]{ width:30px; height:30px; font-size:12px; background:var(--c0); margin-bottom:74px;}
-  .arc-dot[data-i="1"]{ width:38px; height:38px; font-size:14px; background:var(--c1); margin-bottom:56px;}
-  .arc-dot[data-i="2"]{ width:46px; height:46px; font-size:16px; background:var(--c2); margin-bottom:32px;}
-  .arc-dot[data-i="3"]{ width:56px; height:56px; font-size:19px; background:var(--c3); margin-bottom:14px;}
-  .arc-dot[data-i="4"]{ width:66px; height:66px; font-size:22px; background:var(--c4); margin-bottom:2px;}
-  .arc-dot[data-i="5"]{ width:78px; height:78px; font-size:26px; background:var(--c5); margin-bottom:-6px;}
+  .arc-dot:active{ transform: scale(0.94); }
+  .arc-dot[data-i="0"]{ width:15%; height:30px; font-size:12px; background:var(--c0); margin-bottom:74px;}
+  .arc-dot[data-i="1"]{ width:15%; height:38px; font-size:14px; background:var(--c1); margin-bottom:56px;}
+  .arc-dot[data-i="2"]{ width:15%; height:46px; font-size:16px; background:var(--c2); margin-bottom:32px;}
+  .arc-dot[data-i="3"]{ width:15%; height:56px; font-size:19px; background:var(--c3); margin-bottom:14px;}
+  .arc-dot[data-i="4"]{ width:15%; height:66px; font-size:22px; background:var(--c4); margin-bottom:2px;}
+  .arc-dot[data-i="5"]{ width:15%; height:78px; font-size:26px; background:var(--c5); margin-bottom:-6px;}
   .arc-dot.selected{ box-shadow: 0 0 0 4px rgba(34,42,40,0.16); transform: scale(1.05); }
 
   .arc-labels{ display:flex; justify-content:space-between; padding:0 6px; margin-top:6px; }
@@ -114,6 +124,14 @@
     background:var(--ink); color:var(--paper); cursor:pointer;
   }
   .save-btn:disabled{ background:var(--line); color:var(--muted); }
+
+  .quick-tags{ display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+  .tag-chip{
+    border:1px solid var(--line); background:var(--panel); color:var(--ink);
+    border-radius:999px; padding:7px 12px; font-family:'Manrope'; font-weight:700;
+    font-size:12.5px; cursor:pointer;
+  }
+  .tag-chip.active{ background:var(--ink); color:var(--paper); border-color:var(--ink); }
 
   .today-list{ margin-top:26px; }
   .today-list h3{
@@ -205,6 +223,26 @@
     flex:1; border:1px solid var(--line); background:var(--panel); color:var(--ink);
     border-radius:12px; padding:10px; font-family:'Manrope'; font-weight:700; font-size:12.5px; cursor:pointer;
   }
+
+  .settings-row{
+    display:flex; align-items:center; justify-content:space-between;
+    background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    padding:14px 16px; margin-top:10px; margin-bottom:14px;
+  }
+  .settings-row .lbl{ font-family:'Manrope'; font-weight:700; font-size:14px; color:var(--ink); }
+  .switch{ position:relative; display:inline-block; width:46px; height:26px; flex:none; }
+  .switch input{ opacity:0; width:0; height:0; position:absolute; }
+  .switch .track{
+    position:absolute; inset:0; background:var(--line); border-radius:999px;
+    transition:.2s; cursor:pointer;
+  }
+  .switch .track:before{
+    content:''; position:absolute; width:20px; height:20px; left:3px; top:3px;
+    background:var(--panel); border-radius:50%; transition:.2s;
+    box-shadow:0 1px 3px rgba(0,0,0,.25);
+  }
+  .switch input:checked + .track{ background:var(--ink); }
+  .switch input:checked + .track:before{ transform:translateX(20px); background:var(--paper); }
 </style>
 </head>
 <body>
@@ -218,6 +256,8 @@
     <button class="active" data-view="log">Registrar</button>
     <button data-view="day">Dia</button>
     <button data-view="dash">Semana</button>
+    <button data-view="month">Mês</button>
+    <button data-view="settings">Ajustes</button>
   </nav>
 
   <main>
@@ -234,6 +274,7 @@
         <span>Alerta</span><span>Leve</span><span>Branda</span><span>Moderada</span><span>Forte</span><span>Intensa</span>
       </div>
       <div class="selected-tag" id="selectedTag">Toque na intensidade da crise</div>
+      <div class="quick-tags" id="quickTags"></div>
 
       <textarea id="noteInput" placeholder="O que estava acontecendo? (opcional)"></textarea>
       <button class="save-btn" id="saveBtn" disabled>Salvar registro</button>
@@ -286,11 +327,46 @@
       </div>
 
       <div class="trend" id="trendBox"></div>
+    </section>
 
-      <div class="export-row">
-        <button id="exportBtn">Exportar dados (.json)</button>
-        <button id="importBtn">Importar dados</button>
-        <input type="file" id="importFile" accept="application/json" style="display:none;">
+    <section class="view" id="view-month">
+      <div class="week-nav">
+        <button id="prevMonth">‹</button>
+        <div class="label" id="monthLabel">Este mês</div>
+        <button id="nextMonth">›</button>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat"><div class="val" id="monthStatCount">0</div><div class="lbl">Crises</div></div>
+        <div class="stat"><div class="val" id="monthStatAvg">–</div><div class="lbl">Média</div></div>
+        <div class="stat"><div class="val" id="monthStatMax">–</div><div class="lbl">Pico</div></div>
+      </div>
+
+      <div class="chart">
+        <h3>Intensidade média por dia</h3>
+        <div id="monthBars"></div>
+      </div>
+
+      <div class="trend" id="monthTrendBox"></div>
+      <div class="footnote">A linha mostra a tendência ao longo do mês.</div>
+    </section>
+
+    <section class="view" id="view-settings">
+      <div class="settings-row">
+        <div class="lbl">Tema escuro</div>
+        <label class="switch">
+          <input type="checkbox" id="darkToggle">
+          <span class="track"></span>
+        </label>
+      </div>
+
+      <div class="chart" style="padding:16px;">
+        <h3 style="margin-bottom:8px;">Seus dados</h3>
+        <div class="export-row">
+          <button id="exportBtn">Exportar dados (.json)</button>
+          <button id="importBtn">Importar dados</button>
+          <input type="file" id="importFile" accept="application/json" style="display:none;">
+        </div>
       </div>
       <div class="footnote">Os dados ficam salvos só neste iPhone, neste navegador.</div>
     </section>
@@ -301,11 +377,89 @@
 const DAY_NAMES = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
 const COLORS = {0:'#7C93A3',1:'#8FA89B',2:'#A9AD7A',3:'#D8B266',4:'#DB8A56',5:'#C45A45'};
 const STORAGE_KEY = 'ansiedade_entries_v1';
+const THEME_KEY = 'ansiedade_theme';
+
+function applyTheme(dark){
+  document.getElementById('app').classList.toggle('dark', dark);
+  document.getElementById('darkToggle').checked = dark;
+}
+function loadTheme(){
+  applyTheme(localStorage.getItem(THEME_KEY) === 'dark');
+}
+document.getElementById('darkToggle').addEventListener('change', (e)=>{
+  applyTheme(e.target.checked);
+  localStorage.setItem(THEME_KEY, e.target.checked ? 'dark' : 'light');
+});
 let entries = [];
 let selectedIntensity = null;
 let weekOffset = 0;
 let dayOffset = 0;
+let monthOffset = 0;
 let selectedHour = null;
+let selectedTags = [];
+
+const TAGS_BY_LEVEL = {
+  low:  ['Trabalho','Sono ruim','Cafeína','Trânsito','Notícias'],
+  mid:  ['Conflito','Prazo','Dinheiro','Social','Saúde'],
+  high: ['Crise no corpo','Multidão','Conflito grave','Sem gatilho claro','Preciso de ajuda']
+};
+
+function tagsForIntensity(i){
+  if(i === null) return [];
+  if(i <= 1) return TAGS_BY_LEVEL.low;
+  if(i <= 3) return TAGS_BY_LEVEL.mid;
+  return TAGS_BY_LEVEL.high;
+}
+
+function renderQuickTags(){
+  const box = document.getElementById('quickTags');
+  const tags = tagsForIntensity(selectedIntensity);
+  if(!tags.length){ box.innerHTML = ''; return; }
+  box.innerHTML = tags.map(t =>
+    `<button type="button" class="tag-chip ${selectedTags.includes(t) ? 'active' : ''}" data-tag="${t}">${t}</button>`
+  ).join('');
+}
+
+document.getElementById('quickTags').addEventListener('click', (e)=>{
+  const btn = e.target.closest('.tag-chip');
+  if(!btn) return;
+  const tag = btn.dataset.tag;
+  const idx = selectedTags.indexOf(tag);
+  if(idx > -1) selectedTags.splice(idx,1); else selectedTags.push(tag);
+  renderQuickTags();
+});
+
+/* Gráfico de barras + linha de tendência em SVG.
+   data: [{label, value (0-5), count}] */
+function svgBarLineChart(data, opts={}){
+  const W = 300, H = 150;
+  const padTop = 14, padBottom = 26, padSide = 10;
+  const chartH = H - padTop - padBottom;
+  const n = data.length;
+  const slot = (W - padSide*2) / n;
+  const barW = Math.max(4, Math.min(22, slot*0.55));
+  const labelEvery = opts.labelEvery || 1;
+  let bars = '', labels = '';
+  const pts = [];
+  data.forEach((d,i)=>{
+    const cx = padSide + slot*i + slot/2;
+    const val = d.value || 0;
+    const h = d.count ? Math.max(4, (val/5)*chartH) : 2;
+    const y = padTop + chartH - h;
+    const color = d.count ? COLORS[Math.round(val)] : 'var(--line)';
+    bars += `<rect x="${(cx-barW/2).toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${h.toFixed(1)}" rx="3" style="fill:${color}"></rect>`;
+    pts.push([cx, d.count ? y : (padTop + chartH - 2)]);
+    if(i % labelEvery === 0){
+      labels += `<text x="${cx.toFixed(1)}" y="${H-12}" font-size="9" text-anchor="middle" font-weight="700" style="fill:var(--muted)">${d.label}</text>`;
+    }
+    if(d.count && n <= 8){
+      labels += `<text x="${cx.toFixed(1)}" y="${(y-6).toFixed(1)}" font-size="8.5" text-anchor="middle" font-weight="700" style="fill:var(--ink)">${d.count}</text>`;
+    }
+  });
+  const line = `<polyline points="${pts.map(p=>p.join(',')).join(' ')}" fill="none" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" style="stroke:var(--ink); opacity:0.5"></polyline>`;
+  const dots = pts.map(([x,y])=>`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="2.2" style="fill:var(--ink); opacity:0.5"></circle>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%; height:130px; display:block; overflow:visible;">${bars}${line}${dots}${labels}</svg>`;
+}
 
 function loadEntries(){
   try{
@@ -346,6 +500,7 @@ function renderArc(){
   const labels = {0:'Alerta',1:'Leve',2:'Branda',3:'Moderada',4:'Forte',5:'Intensa'};
   tag.textContent = selectedIntensity !== null ? `Intensidade ${selectedIntensity} · ${labels[selectedIntensity]}` : 'Toque na intensidade da crise';
   document.getElementById('saveBtn').disabled = selectedIntensity === null;
+  renderQuickTags();
 }
 
 function renderToday(){
@@ -360,11 +515,12 @@ function renderToday(){
   }
   container.innerHTML = list.map(e => {
     const time = new Date(e.ts).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+    const extra = [...(e.tags||[]), e.note].filter(Boolean).map(escapeHtml).join(' · ');
     return `<div class="entry">
       <div class="num" style="background:${COLORS[e.intensity]}">${e.intensity}</div>
       <div class="info">
         <div class="time">${time}</div>
-        ${e.note ? `<div class="note">${escapeHtml(e.note)}</div>` : ''}
+        ${extra ? `<div class="note">${extra}</div>` : ''}
       </div>
       <button class="del" data-id="${e.id}">✕</button>
     </div>`;
@@ -406,16 +562,9 @@ function renderDashboard(){
     return {label: DAY_NAMES[d.getDay()], avg: dAvg, count: dayEntries.length};
   });
 
-  const barsEl = document.getElementById('bars');
-  barsEl.innerHTML = perDay.map(d=>{
-    const h = d.count ? Math.max(8, (d.avg/5)*100) : 3;
-    const color = d.count ? COLORS[Math.round(d.avg)] : 'var(--line)';
-    return `<div class="bar-col">
-      <div class="bar-track"><div class="bar" style="height:${h}px; background:${color}"></div></div>
-      <div class="bar-count">${d.count ? d.count : ''}</div>
-      <div class="bar-day">${d.label}</div>
-    </div>`;
-  }).join('');
+  document.getElementById('bars').innerHTML = svgBarLineChart(
+    perDay.map(d => ({label: d.label, value: d.avg, count: d.count}))
+  );
 
   const prevBase = new Date(base);
   prevBase.setDate(prevBase.getDate()-7);
@@ -449,11 +598,12 @@ function renderHourDetail(dayEntries){
   box.innerHTML = `<div class="footnote" style="margin-top:14px; text-align:left; font-weight:700; color:var(--ink);">${hh}h–${String((selectedHour+1)%24).padStart(2,'0')}h</div>` +
     list.map(e=>{
       const time = new Date(e.ts).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+      const extra = [...(e.tags||[]), e.note].filter(Boolean).map(escapeHtml).join(' · ');
       return `<div class="hour-entry">
         <div class="num" style="background:${COLORS[e.intensity]}">${e.intensity}</div>
         <div>
           <div class="time">${time}</div>
-          ${e.note ? `<div class="note">${escapeHtml(e.note)}</div>` : ''}
+          ${extra ? `<div class="note">${extra}</div>` : ''}
         </div>
       </div>`;
     }).join('');
@@ -507,6 +657,48 @@ function renderDayDashboard(){
   renderHourDetail(dayEntries);
 }
 
+function renderMonthDashboard(){
+  const base = new Date();
+  base.setDate(1);
+  base.setMonth(base.getMonth() + monthOffset);
+  const start = new Date(base.getFullYear(), base.getMonth(), 1);
+  const totalDays = new Date(base.getFullYear(), base.getMonth()+1, 0).getDate();
+  const end = new Date(base.getFullYear(), base.getMonth(), totalDays, 23,59,59,999);
+
+  document.getElementById('monthLabel').textContent =
+    start.toLocaleDateString('pt-BR', {month:'long', year:'numeric'});
+  document.getElementById('nextMonth').disabled = monthOffset >= 0;
+
+  const monthEntries = entries.filter(e => e.ts >= start.getTime() && e.ts <= end.getTime());
+  const count = monthEntries.length;
+  const avg = count ? (monthEntries.reduce((s,e)=>s+e.intensity,0)/count) : null;
+  const max = count ? Math.max(...monthEntries.map(e=>e.intensity)) : null;
+
+  document.getElementById('monthStatCount').textContent = count;
+  document.getElementById('monthStatAvg').textContent = avg !== null ? avg.toFixed(1) : '–';
+  document.getElementById('monthStatMax').textContent = max ?? '–';
+
+  const perDay = Array.from({length: totalDays}, (_,i)=>{
+    const dayNum = i+1;
+    const dEntries = monthEntries.filter(e => new Date(e.ts).getDate() === dayNum);
+    const dAvg = dEntries.length ? dEntries.reduce((s,e)=>s+e.intensity,0)/dEntries.length : 0;
+    return {label:String(dayNum), value:dAvg, count:dEntries.length};
+  });
+
+  document.getElementById('monthBars').innerHTML = svgBarLineChart(perDay, {labelEvery:5});
+
+  const trendBox = document.getElementById('monthTrendBox');
+  if(!count){
+    trendBox.innerHTML = 'Sem registros neste mês ainda.';
+  } else {
+    const peakDay = perDay.reduce((a,b)=> b.value > a.value ? b : a, perDay[0]);
+    trendBox.innerHTML = `Média de <b>${avg.toFixed(1)}</b> em ${count} registro${count>1?'s':''} este mês. Pico no dia <b>${peakDay.label}</b>.`;
+  }
+}
+
+document.getElementById('prevMonth').addEventListener('click', ()=>{ monthOffset -= 1; renderMonthDashboard(); });
+document.getElementById('nextMonth').addEventListener('click', ()=>{ monthOffset = Math.min(0, monthOffset+1); renderMonthDashboard(); });
+
 document.getElementById('hourBars').addEventListener('click', (e)=>{
   const col = e.target.closest('.bar-col');
   if(!col) return;
@@ -526,12 +718,14 @@ document.querySelectorAll('nav button').forEach(btn=>{
     document.getElementById('view-'+btn.dataset.view).classList.add('active');
     if(btn.dataset.view === 'dash') renderDashboard();
     if(btn.dataset.view === 'day') renderDayDashboard();
+    if(btn.dataset.view === 'month') renderMonthDashboard();
   });
 });
 
 document.querySelectorAll('.arc-dot').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     selectedIntensity = Number(btn.dataset.i);
+    selectedTags = [];
     renderArc();
   });
 });
@@ -539,10 +733,11 @@ document.querySelectorAll('.arc-dot').forEach(btn=>{
 document.getElementById('saveBtn').addEventListener('click', ()=>{
   if(selectedIntensity === null) return;
   const note = document.getElementById('noteInput').value.trim();
-  const entry = { id: Date.now()+'-'+Math.random().toString(36).slice(2,7), ts: Date.now(), intensity: selectedIntensity, note };
+  const entry = { id: Date.now()+'-'+Math.random().toString(36).slice(2,7), ts: Date.now(), intensity: selectedIntensity, note, tags: [...selectedTags] };
   entries.push(entry);
   persist();
   selectedIntensity = null;
+  selectedTags = [];
   document.getElementById('noteInput').value = '';
   renderArc();
   renderToday();
@@ -603,6 +798,7 @@ document.getElementById('importFile').addEventListener('change', (e)=>{
   reader.readAsText(file);
 });
 
+loadTheme();
 loadEntries();
 renderArc();
 renderToday();
