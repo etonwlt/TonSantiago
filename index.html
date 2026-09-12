@@ -23,6 +23,7 @@
     --line: rgba(34,42,40,0.10);
     --muted:#6B7370;
 
+    --c0:#7C93A3;
     --c1:#8FA89B;
     --c2:#A9AD7A;
     --c3:#D8B266;
@@ -84,6 +85,7 @@
     transition: transform .15s ease;
   }
   .arc-dot:active{ transform: scale(0.92); }
+  .arc-dot[data-i="0"]{ width:30px; height:30px; font-size:12px; background:var(--c0); margin-bottom:74px;}
   .arc-dot[data-i="1"]{ width:38px; height:38px; font-size:14px; background:var(--c1); margin-bottom:56px;}
   .arc-dot[data-i="2"]{ width:46px; height:46px; font-size:16px; background:var(--c2); margin-bottom:32px;}
   .arc-dot[data-i="3"]{ width:56px; height:56px; font-size:19px; background:var(--c3); margin-bottom:14px;}
@@ -92,7 +94,7 @@
   .arc-dot.selected{ box-shadow: 0 0 0 4px rgba(34,42,40,0.16); transform: scale(1.05); }
 
   .arc-labels{ display:flex; justify-content:space-between; padding:0 6px; margin-top:6px; }
-  .arc-labels span{ font-size:10.5px; color:var(--muted); font-weight:600; width:20%; text-align:center; }
+  .arc-labels span{ font-size:10.5px; color:var(--muted); font-weight:600; width:16.66%; text-align:center; }
 
   .selected-tag{
     text-align:center; margin-top:18px; min-height:20px;
@@ -221,6 +223,7 @@
   <main>
     <section class="view active" id="view-log">
       <div class="arc" id="arc">
+        <button class="arc-dot" data-i="0">0</button>
         <button class="arc-dot" data-i="1">1</button>
         <button class="arc-dot" data-i="2">2</button>
         <button class="arc-dot" data-i="3">3</button>
@@ -228,7 +231,7 @@
         <button class="arc-dot" data-i="5">5</button>
       </div>
       <div class="arc-labels">
-        <span>Leve</span><span>Branda</span><span>Moderada</span><span>Forte</span><span>Intensa</span>
+        <span>Alerta</span><span>Leve</span><span>Branda</span><span>Moderada</span><span>Forte</span><span>Intensa</span>
       </div>
       <div class="selected-tag" id="selectedTag">Toque na intensidade da crise</div>
 
@@ -286,6 +289,8 @@
 
       <div class="export-row">
         <button id="exportBtn">Exportar dados (.json)</button>
+        <button id="importBtn">Importar dados</button>
+        <input type="file" id="importFile" accept="application/json" style="display:none;">
       </div>
       <div class="footnote">Os dados ficam salvos só neste iPhone, neste navegador.</div>
     </section>
@@ -294,7 +299,7 @@
 
 <script>
 const DAY_NAMES = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
-const COLORS = {1:'#8FA89B',2:'#A9AD7A',3:'#D8B266',4:'#DB8A56',5:'#C45A45'};
+const COLORS = {0:'#7C93A3',1:'#8FA89B',2:'#A9AD7A',3:'#D8B266',4:'#DB8A56',5:'#C45A45'};
 const STORAGE_KEY = 'ansiedade_entries_v1';
 let entries = [];
 let selectedIntensity = null;
@@ -338,9 +343,9 @@ function renderArc(){
     btn.classList.toggle('selected', Number(btn.dataset.i) === selectedIntensity);
   });
   const tag = document.getElementById('selectedTag');
-  const labels = {1:'Leve',2:'Branda',3:'Moderada',4:'Forte',5:'Intensa'};
-  tag.textContent = selectedIntensity ? `Intensidade ${selectedIntensity} · ${labels[selectedIntensity]}` : 'Toque na intensidade da crise';
-  document.getElementById('saveBtn').disabled = !selectedIntensity;
+  const labels = {0:'Alerta',1:'Leve',2:'Branda',3:'Moderada',4:'Forte',5:'Intensa'};
+  tag.textContent = selectedIntensity !== null ? `Intensidade ${selectedIntensity} · ${labels[selectedIntensity]}` : 'Toque na intensidade da crise';
+  document.getElementById('saveBtn').disabled = selectedIntensity === null;
 }
 
 function renderToday(){
@@ -390,7 +395,7 @@ function renderDashboard(){
   const max = count ? Math.max(...weekEntries.map(e=>e.intensity)) : null;
 
   document.getElementById('statCount').textContent = count;
-  document.getElementById('statAvg').textContent = avg ? avg.toFixed(1) : '–';
+  document.getElementById('statAvg').textContent = avg !== null ? avg.toFixed(1) : '–';
   document.getElementById('statMax').textContent = max ?? '–';
 
   const perDay = [0,1,2,3,4,5,6].map(offset=>{
@@ -403,8 +408,8 @@ function renderDashboard(){
 
   const barsEl = document.getElementById('bars');
   barsEl.innerHTML = perDay.map(d=>{
-    const h = d.avg ? Math.max(8, (d.avg/5)*100) : 3;
-    const color = d.avg ? COLORS[Math.round(d.avg)] : 'var(--line)';
+    const h = d.count ? Math.max(8, (d.avg/5)*100) : 3;
+    const color = d.count ? COLORS[Math.round(d.avg)] : 'var(--line)';
     return `<div class="bar-col">
       <div class="bar-track"><div class="bar" style="height:${h}px; background:${color}"></div></div>
       <div class="bar-count">${d.count ? d.count : ''}</div>
@@ -470,7 +475,7 @@ function renderDayDashboard(){
   const max = count ? Math.max(...dayEntries.map(e=>e.intensity)) : null;
 
   document.getElementById('dayStatCount').textContent = count;
-  document.getElementById('dayStatAvg').textContent = avg ? avg.toFixed(1) : '–';
+  document.getElementById('dayStatAvg').textContent = avg !== null ? avg.toFixed(1) : '–';
   document.getElementById('dayStatMax').textContent = max ?? '–';
 
   const perHour = Array.from({length:24}, (_,h)=>{
@@ -483,8 +488,8 @@ function renderDayDashboard(){
   barsEl.innerHTML = perHour.map(h=>{
     const hh = String(h.hour).padStart(2,'0');
     const showLabel = h.hour % 3 === 0;
-    const barH = h.avg ? Math.max(6, (h.avg/5)*80) : 2;
-    const color = h.avg ? COLORS[Math.round(h.avg)] : '';
+    const barH = h.count ? Math.max(6, (h.avg/5)*80) : 2;
+    const color = h.count ? COLORS[Math.round(h.avg)] : '';
     return `<div class="bar-col ${h.count?'':'empty-hour'} ${selectedHour===h.hour?'selected-hour':''}" data-hour="${h.hour}">
       <div class="bar-track"><div class="bar" style="height:${barH}px; ${color?`background:${color}`:''}"></div></div>
       <div class="bar-day">${showLabel ? hh : ''}</div>
@@ -532,7 +537,7 @@ document.querySelectorAll('.arc-dot').forEach(btn=>{
 });
 
 document.getElementById('saveBtn').addEventListener('click', ()=>{
-  if(!selectedIntensity) return;
+  if(selectedIntensity === null) return;
   const note = document.getElementById('noteInput').value.trim();
   const entry = { id: Date.now()+'-'+Math.random().toString(36).slice(2,7), ts: Date.now(), intensity: selectedIntensity, note };
   entries.push(entry);
@@ -564,6 +569,38 @@ document.getElementById('exportBtn').addEventListener('click', ()=>{
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+});
+
+document.getElementById('importBtn').addEventListener('click', ()=>{
+  document.getElementById('importFile').click();
+});
+
+document.getElementById('importFile').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev)=>{
+    try{
+      const imported = JSON.parse(ev.target.result);
+      if(!Array.isArray(imported)) throw new Error('Formato inválido');
+      const existingIds = new Set(entries.map(en=>en.id));
+      let added = 0;
+      imported.forEach(en=>{
+        if(en && typeof en.id !== 'undefined' && !existingIds.has(en.id)){
+          entries.push(en);
+          existingIds.add(en.id);
+          added++;
+        }
+      });
+      persist();
+      renderToday();
+      alert(`${added} registro${added===1?'':'s'} importado${added===1?'':'s'} com sucesso.`);
+    }catch(err){
+      alert('Não foi possível ler esse arquivo. Confira se é um backup exportado por este app.');
+    }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
 });
 
 loadEntries();
